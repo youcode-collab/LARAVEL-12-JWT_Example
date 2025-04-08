@@ -1,66 +1,174 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Kyojin JWT Example Repo
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This repo is a simple example of how to implement [Kyojin JWT](https://github.com/tahajaiti/jwt) — a Laravel package that eases JWT Auth implementation in Laravel 11/12x Apps
 
-## About Laravel
+## What this repo is about
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- User registration with automatic token generation
+- JWT authentication using middleware
+- Token decoding and accessing the authenticated user
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+##  Getting Started
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 1. Clone this repo
 
-## Learning Laravel
+```bash
+git clone https://github.com/youcode-collab/LARAVEL-12-JWT_Example
+cd LARAVEL-12-JWT_Example
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 2. Install Dependencies
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+```bash
+composer install
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 3. Set up your environment
 
-## Laravel Sponsors
+Copy the `.env.example` to `.env`:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```bash
+cp .env.example .env
+```
 
-### Premium Partners
+Set up your DB in the `.env` file, then run:
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+```bash
+php artisan migrate
+```
 
-## Contributing
+### 4. Install the Kyojin JWT Package
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+composer require tahajaiti/jwt
+```
 
-## Code of Conduct
+Run the setup command:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+php artisan jwt:setup
+```
 
-## Security Vulnerabilities
+This will:
+- Add JWT configs to `.env`
+- Publish the `config/jwt.php` file
+- Clear the config/cache
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 5. Serve it
 
-## License
+```bash
+php artisan serve
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+##  How It Works
+
+### Registration
+
+Hit the `POST /api/register` endpoint:
+
+```json
+{
+  "name": "Test User",
+  "email": "test@hhhhhh.com",
+  "password": "kalimatsir"
+}
+```
+
+Response:
+
+```json
+{
+  "user": { ... },
+  "token": "your-token"
+}
+```
+
+###  Authenticated Route
+
+Use the token from registration in your request headers:
+
+```
+Authorization: Bearer your-jwt-token
+```
+
+Then call `GET /api/me` to get the current user and payload:
+
+Response:
+
+```json
+{
+  "user": { ... },
+  "payload": {
+    "sub": 1,
+    "role": "user",
+    "exp": 1728546548
+  }
+}
+```
+
+---
+
+## Code Breakdown
+
+### `routes/api.php`
+
+```php
+Route::post('/register', [AuthController::class, 'register']);
+
+Route::middleware('jwt')->group(function () {
+    Route::get('/me', function (Request $request) {
+        $token = $request->bearerToken(); //accessing the token from the header
+        $payload = JWT::decode($token); //decoding the token for the payload
+
+        return response()->json([
+            'user' => Auth::user(), //accessing the logged in user based on the token
+            'payload' => $payload,
+        ]);
+    });
+});
+```
+
+### `AuthController.php`
+
+```php
+public function register(Request $request) {
+    $user = User::create([
+        'name' => $request->name,
+        'email' => $request->email,
+        'password' => $request->password
+    ]);
+
+    $token = $user->createToken(); //creating token
+
+    return response()->json([
+        'user' => $user,
+        'token' => $token
+    ]);
+}
+```
+
+### User Model Setup
+
+Don't forget to use the trait in your `User.php` model:
+
+```php
+use Kyojin\JWT\Traits\HasJWT;
+
+class User extends Authenticatable
+{
+    use HasJWT;
+
+    public function payload(): array
+    {
+        return [
+            'role' => $this->role ?? 'user' //your custom payload values
+        ];
+    }
+}
+```
+
+---
+
+## Want to Learn More?
+
+Check out the full [Kyojin JWT Package Documentation](https://github.com/tahajaiti/jwt) for more info on exception handling, facades, and validation methods.
